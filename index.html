@@ -12,12 +12,12 @@
 <body>
 
 <header>
-  <div class="header-icon"><i class="fas fa-clipboard-list"></i></div>
+  <div class="header-icon"><i class="fas fa-users"></i></div>
   <div>
     <h1>Veli İletişim</h1>
     <span>American Life</span>
   </div>
-  <button class="resources-btn" onclick="openResources()" title="Kaynaklar"><i class="fas fa-folder"></i></button>
+  <button class="resources-btn" onclick="openResources()" title="Kaynaklar"><i class="fas fa-folder-open"></i></button>
 </header>
 
 <div class="region-filter-bar" id="regionFilterBar"></div>
@@ -34,27 +34,27 @@
     <div class="modal-handle"></div>
     <h2><i class="fas fa-folder-open"></i> Kaynaklar</h2>
 
-    <a class="resource-link-card" href="https://drive.google.com/drive/folders/1mWur-_kbmXTMyqIS9U1KUQQx_3oNIQH4" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:13px; border:2px solid var(--border); border-radius:13px; padding:14px; text-decoration:none; color:var(--text); margin-bottom:10px;">
+    <a class="resource-link-card" href="https://drive.google.com/drive/folders/1mWur-_kbmXTMyqIS9U1KUQQx_3oNIQH4" target="_blank" rel="noopener">
       <div class="resource-icon"><i class="fas fa-file-alt"></i></div>
       <div class="resource-info">
         <div class="resource-title">Sınavlar</div>
         <div class="resource-sub">Google Drive klasörü</div>
       </div>
-      <div style="color:var(--slate); font-size:16px;"><i class="fas fa-external-link-alt"></i></div>
+      <div class="resource-arrow"><i class="fas fa-external-link-alt"></i></div>
     </a>
-    <a class="resource-link-card" href="https://drive.google.com/drive/folders/18mvxoQWoquQnWsX-73VwfWt-sHNNd_nM" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:13px; border:2px solid var(--border); border-radius:13px; padding:14px; text-decoration:none; color:var(--text); margin-bottom:16px;">
+    
+    <a class="resource-link-card" href="https://drive.google.com/drive/folders/18mvxoQWoquQnWsX-73VwfWt-sHNNd_nM" target="_blank" rel="noopener">
       <div class="resource-icon"><i class="fas fa-book"></i></div>
       <div class="resource-info">
-        <div class="resource-title">Kitapçıklar (Booklets)</div>
+        <div class="resource-title">Kitapçıklar</div>
         <div class="resource-sub">Google Drive klasörü</div>
       </div>
-      <div style="color:var(--slate); font-size:16px;"><i class="fas fa-external-link-alt"></i></div>
+      <div class="resource-arrow"><i class="fas fa-external-link-alt"></i></div>
     </a>
 
-    <!-- ATAKUM -->
     <div class="resource-card">
       <div class="resource-card-header">
-        <div class="resource-icon"><i class="fas fa-map-pin"></i></div>
+        <div class="resource-icon"><i class="fas fa-map-marker-alt"></i></div>
         <div class="resource-info">
           <div class="resource-title">Atakum</div>
           <div class="resource-sub" id="atakumSub">Telegram grubu</div>
@@ -62,16 +62,15 @@
       </div>
       <div class="resource-actions">
         <button class="resource-action-btn" onclick="openRegionLink('Atakum')"><i class="fab fa-telegram-plane"></i> Telegram</button>
-        <button class="resource-action-btn" onclick="triggerImageUpload('Atakum')"><i class="fas fa-image"></i> More</button>
+        <button class="resource-action-btn" onclick="triggerImageUpload('Atakum')"><i class="fas fa-image"></i> Görsel</button>
       </div>
       <img class="resource-image-preview" id="atakumImage" alt="Atakum kaynak görseli">
       <input type="file" id="fileAtakum" accept="image/*" style="display:none" onchange="handleImageUpload('Atakum', this)">
     </div>
 
-    <!-- İLKADIM -->
     <div class="resource-card">
       <div class="resource-card-header">
-        <div class="resource-icon"><i class="fas fa-map-pin"></i></div>
+        <div class="resource-icon"><i class="fas fa-map-marker-alt"></i></div>
         <div class="resource-info">
           <div class="resource-title">İlkadım</div>
           <div class="resource-sub" id="ilkadimSub">Telegram grubu</div>
@@ -79,39 +78,41 @@
       </div>
       <div class="resource-actions">
         <button class="resource-action-btn" onclick="openRegionLink('İlkadım')"><i class="fab fa-telegram-plane"></i> Telegram</button>
-        <button class="resource-action-btn" onclick="triggerImageUpload('İlkadım')"><i class="fas fa-image"></i> More</button>
+        <button class="resource-action-btn" onclick="triggerImageUpload('İlkadım')"><i class="fas fa-image"></i> Görsel</button>
       </div>
       <img class="resource-image-preview" id="ilkadimImage" alt="İlkadım kaynak görseli">
       <input type="file" id="fileIlkadim" accept="image/*" style="display:none" onchange="handleImageUpload('İlkadım', this)">
     </div>
 
-    <div class="modal-actions" style="margin-top: 4px;">
+    <div class="modal-actions">
       <button class="modal-btn cancel" onclick="closeResources()">Kapat</button>
     </div>
   </div>
 </div>
 
-<!-- CLASS MODAL — bottom sheet -->
+<!-- CLASS MODAL -->
 <div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOnBackdrop(event)">
   <div class="modal" id="modal">
     <div class="modal-handle"></div>
     <h2 id="modalTitle">Yeni Sınıf Ekle</h2>
 
     <div class="region-picker">
-      <button type="button" class="region-pick-btn" id="regionPickAtakum" onclick="pickRegion('Atakum')"><i class="fas fa-map-pin"></i> Atakum</button>
-      <button type="button" class="region-pick-btn" id="regionPickIlkadim" onclick="pickRegion('İlkadım')"><i class="fas fa-map-pin"></i> İlkadım</button>
+      <button type="button" class="region-pick-btn" id="regionPickAtakum" onclick="pickRegion('Atakum')"><i class="fas fa-map-marker-alt"></i> Atakum</button>
+      <button type="button" class="region-pick-btn" id="regionPickIlkadim" onclick="pickRegion('İlkadım')"><i class="fas fa-map-marker-alt"></i> İlkadım</button>
     </div>
 
     <div class="modal-field">
-      <label>Sınıf Adı</label>
-      <input type="text" id="mClassName" placeholder="örn. C+, B1, Advanced" autocomplete="off">
+      <label><i class="fas fa-tag"></i> Sınıf Adı</label>
+      <input type="text" id="mClassName" placeholder="Örn. C+, B1, Advanced" autocomplete="off">
     </div>
+    
     <div class="modal-field">
-      <label>Gün(ler)</label>
-      <input type="text" id="mDay" placeholder="örn. Pazar, Cumartesi" autocomplete="off">
+      <label><i class="fas fa-calendar-day"></i> Gün(ler)</label>
+      <input type="text" id="mDay" placeholder="Örn. Pazartesi, Çarşamba" autocomplete="off">
     </div>
+    
     <div class="modal-field">
-      <label>Saat</label>
+      <label><i class="fas fa-clock"></i> Saat</label>
       <div class="modal-time-row">
         <input type="time" id="mTimeStart">
         <input type="time" id="mTimeEnd">
@@ -119,21 +120,21 @@
     </div>
 
     <div class="modal-field">
-      <label>Öğrenciler</label>
+      <label><i class="fas fa-user-graduate"></i> Öğrenciler</label>
       <div class="student-builder" id="studentBuilder"></div>
       <button class="add-student-row" type="button" onclick="addStudentRow()"><i class="fas fa-plus"></i> Öğrenci Ekle</button>
-      <button class="bulk-import-btn" type="button" onclick="openBulkImport()"><i class="fas fa-paste"></i> Toplu Yapıştır (Ad - Telefon)</button>
+      <button class="bulk-import-btn" type="button" onclick="openBulkImport()"><i class="fas fa-paste"></i> Toplu Yapıştır</button>
     </div>
 
     <div class="modal-actions">
       <button class="modal-btn cancel" onclick="closeModal()">İptal</button>
       <button class="modal-btn primary" onclick="saveClass()">Kaydet</button>
     </div>
-    <button class="delete-class-btn" id="deleteClassBtn" onclick="deleteClass()" style="display:none"><i class="fas fa-trash-alt"></i> Bu Sınıfı Sil</button>
+    
+    <button class="delete-class-btn" id="deleteClassBtn" onclick="deleteClass()" style="display:none"><i class="fas fa-trash-alt"></i> Sınıfı Sil</button>
   </div>
 </div>
 
-<!-- Supabase client SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="index.js"></script>
 </body>
