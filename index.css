@@ -52,6 +52,7 @@ header {
   border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; flex-shrink: 0;
+  color: var(--navy);
 }
 header h1 { color: #fff; font-size: 17px; font-weight: 600; }
 header span { color: rgba(255,255,255,0.45); font-size: 12px; display: block; margin-top: 1px; }
@@ -572,6 +573,7 @@ input:focus { border-color: var(--amber); }
   display: flex; align-items: center; justify-content: center;
   font-size: 19px;
   flex-shrink: 0;
+  color: var(--navy);
 }
 .resource-info { flex: 1; min-width: 0; }
 .resource-title { font-weight: 700; font-size: 14.5px; }
