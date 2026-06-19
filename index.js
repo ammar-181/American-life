@@ -1,15 +1,17 @@
 // ============================================================
 // American Life — Veli İletişim — script.js
-// Professional, modern communication tool
+// Data: classes / students / lessons → Supabase
+//       region telegram links + resource images → localStorage only
 // ============================================================
 
 // ── SUPABASE CLIENT ──
 const SUPABASE_URL = "https://glgdrymnefndxrzsejnp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZ2RyeW1uZWZuZHhyenNlam5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjYyMTEsImV4cCI6MjA5NzEwMjIxMX0.5T_3a29gtb37yfx1_pBuyb0roi9ZJKSWAdM_lR6Q4o0";
 
+// Loaded from CDN via <script> tag in index.html — see deployment notes
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ── LOCAL STORAGE ──
+// ── LOCAL-ONLY DATA (regions: telegram links + resource images) ──
 const REGIONS_KEY = "americanLifeRegions_v1";
 
 const defaultRegions = {
@@ -40,6 +42,10 @@ function saveRegions() {
 }
 
 // ── APP STATE ──
+// classes: [{ id, name, branch, days, time_start, time_end,
+//             students: [{id, class_id, name, phone}],
+//             lessons: [{id, class_id, number, is_complete, notes}],
+//             note: "" (local-only, per-session, not persisted to DB) }]
 let classes = [];
 let activeClassId = null;
 let appData = { regions: loadRegions() };
@@ -47,12 +53,15 @@ let selected = new Map();
 let editingClassId = null;
 let activeRegionFilter = "all";
 let modalSelectedRegion = "Atakum";
+let modalStudentRows = [];
 let isLoading = true;
 let loadError = null;
 
-// ── HELPERS ──
 function makeDefaultLessonNumbers() {
-  return Array.from({ length: 30 }, (_, i) => i + 1);
+  // Used only when creating a brand new class — generates 30 lesson rows
+  const nums = [];
+  for (let i = 1; i <= 30; i++) nums.push(i);
+  return nums;
 }
 
 function getInitials(name) {
@@ -73,12 +82,16 @@ function normalizePhone(raw) {
 }
 
 function formatTimeRange(start, end) {
+  // time_start / time_end come back as "13:30:00" — trim to "13:30"
   const trim = t => (t || "").slice(0, 5);
   if (!start && !end) return "";
   return `${trim(start)} – ${trim(end)}`;
 }
 
-// ── SUPABASE OPERATIONS ──
+// ============================================================
+// SUPABASE DATA LAYER
+// ============================================================
+
 async function fetchAllData() {
   isLoading = true;
   loadError = null;
@@ -156,6 +169,8 @@ async function updateClassInDb(classId, name, branch, days, timeStart, timeEnd, 
     .eq("id", classId);
   if (classErr) throw classErr;
 
+  // Replace students wholesale: delete existing, insert new set.
+  // Simple and reliable for a small roster; avoids diffing logic.
   const { error: delErr } = await sb.from("students").delete().eq("class_id", classId);
   if (delErr) throw delErr;
 
@@ -167,6 +182,8 @@ async function updateClassInDb(classId, name, branch, days, timeStart, timeEnd, 
 }
 
 async function deleteClassInDb(classId) {
+  // students + lessons cascade-delete if you set up FK constraints with
+  // ON DELETE CASCADE; otherwise we clean up manually here first.
   await sb.from("students").delete().eq("class_id", classId);
   await sb.from("lessons").delete().eq("class_id", classId);
   const { error } = await sb.from("classes").delete().eq("id", classId);
@@ -183,14 +200,17 @@ async function updateLessonNoteInDb(lessonId, notes) {
   if (error) throw error;
 }
 
-// ── RENDER ──
+// ============================================================
+// RENDER
+// ============================================================
+
 function renderLoadingState() {
   const root = document.getElementById("appRoot");
   if (!root) return;
   root.innerHTML = `
-    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 50px 20px;">
-      <div style="font-size:36px; margin-bottom:12px; color:var(--secondary);"><i class="fas fa-spinner fa-pulse"></i></div>
-      <div style="color:var(--gray); font-size:14px; font-weight:500;">Veriler yükleniyor...</div>
+    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 40px 20px;">
+      <div style="font-size:28px; margin-bottom:10px; color:var(--gold);"><i class="fa-solid fa-spinner fa-spin"></i></div>
+      <div style="color:var(--slate); font-size:14px;">Veriler yükleniyor...</div>
     </div>
   `;
 }
@@ -199,11 +219,11 @@ function renderErrorState() {
   const root = document.getElementById("appRoot");
   if (!root) return;
   root.innerHTML = `
-    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 40px 20px;">
-      <div style="font-size:36px; margin-bottom:12px; color:#e74c3c;"><i class="fas fa-exclamation-triangle"></i></div>
-      <div style="color:#e74c3c; font-weight:600; font-size:15px; margin-bottom:8px;">Bağlantı Hatası</div>
-      <div style="color:var(--gray); font-size:13px; margin-bottom:20px;">${loadError}</div>
-      <button class="modal-btn primary" style="display:inline-block; padding: 12px 28px; width:auto;" onclick="fetchAllData()">Tekrar Dene</button>
+    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 30px 20px;">
+      <div style="font-size:28px; margin-bottom:10px; color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div style="color:#E74C3C; font-weight:600; font-size:14px; margin-bottom:6px;">Bağlantı hatası</div>
+      <div style="color:var(--slate); font-size:13px; margin-bottom:16px;">${loadError}</div>
+      <button class="modal-btn primary" style="display:inline-block; padding: 10px 20px;" onclick="fetchAllData()">Tekrar Dene</button>
     </div>
   `;
 }
@@ -239,7 +259,7 @@ function renderTabs() {
   bar.querySelectorAll(".class-tab").forEach(t => t.remove());
   const visibleClasses = classes.filter(c => activeRegionFilter === "all" || c.branch === activeRegionFilter);
   visibleClasses.forEach(cls => {
-    const tab = document.createElement("button");
+    const tab = document.createElement("div");
     tab.className = "class-tab" + (cls.id === activeClassId ? " active" : "");
     tab.innerHTML = `<span class="tab-dot"></span>${cls.name}`;
     tab.onclick = () => {
@@ -260,10 +280,8 @@ function renderApp() {
   const cls = classes.find(c => c.id === activeClassId);
   if (!cls) {
     root.innerHTML = `
-      <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 40px 20px; color:var(--gray);">
-        <div style="font-size:36px; margin-bottom:12px; color:var(--secondary);"><i class="fas fa-plus-circle"></i></div>
-        <div style="font-weight:500; font-size:15px; margin-bottom:4px;">Henüz sınıf eklenmedi</div>
-        <div style="font-size:13px;">Üstteki <strong>+</strong> butonuna dokunarak ilk sınıfınızı oluşturun</div>
+      <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 30px 20px; color:var(--slate);">
+        Henüz sınıf eklenmedi. Üstteki "+" butonuna dokunarak ilk sınıfınızı oluşturun.
       </div>
     `;
     return;
@@ -275,28 +293,28 @@ function renderApp() {
   root.innerHTML = "";
   const regions = appData.regions;
 
-  // CLASS INFO BAR
+  // ── Class info bar ──
   const infoBar = make("div", "class-info-bar");
   infoBar.style.gridColumn = "1 / -1";
   infoBar.innerHTML = `
     <div class="info-chips">
-      <div class="info-chip"><i class="fas fa-book"></i> ${cls.name}</div>
-      <div class="info-chip"><i class="fas fa-map-marker-alt"></i> ${cls.branch || "Atakum"}</div>
-      <div class="info-chip"><i class="fas fa-calendar-day"></i> ${cls.days || ""}</div>
-      <div class="info-chip"><i class="fas fa-clock"></i> ${formatTimeRange(cls.time_start, cls.time_end)}</div>
+      <div class="info-chip"><i class="fa-solid fa-book-open"></i> ${cls.name} Sınıfı</div>
+      <div class="info-chip"><i class="fa-solid fa-location-dot"></i> ${cls.branch || "Atakum"}</div>
+      <div class="info-chip"><i class="fa-solid fa-calendar-days"></i> ${cls.days || ""}</div>
+      <div class="info-chip"><i class="fa-solid fa-clock"></i> ${formatTimeRange(cls.time_start, cls.time_end)}</div>
     </div>
-    <button class="edit-class-btn" onclick="openModal('${cls.id}')"><i class="fas fa-edit"></i> Düzenle</button>
+    <button class="edit-class-btn" onclick="openModal('${cls.id}')"><i class="fa-solid fa-pen"></i> Düzenle</button>
   `;
   root.appendChild(infoBar);
 
-  // STUDENTS PANEL
+  // ── Students panel ──
   const sPanel = make("div", "panel");
   const ph = make("div", "panel-header");
   const pt = make("div", "panel-title");
-  pt.innerHTML = `<i class="fas fa-user-graduate"></i> Öğrenciler`;
+  pt.textContent = "Öğrenciler";
   const sc = make("div", "selected-count");
   sc.id = "selectedCount";
-  sc.style.display = selected.size > 0 ? "inline-block" : "none";
+  sc.style.display = selected.size > 0 ? "inline" : "none";
   sc.textContent = selected.size + " seçili";
   ph.appendChild(pt);
   ph.appendChild(sc);
@@ -307,8 +325,8 @@ function renderApp() {
 
   if (!cls.students.length) {
     const empty = make("div", "");
-    empty.style.cssText = "text-align:center; color:var(--gray); font-size:13px; padding:16px;";
-    empty.textContent = "Bu sınıfta öğrenci bulunmuyor.";
+    empty.style.cssText = "text-align:center; color:var(--slate); font-size:13px; padding:14px;";
+    empty.textContent = "Bu sınıfta öğrenci yok. Düzenle ile ekleyebilirsiniz.";
     sg.appendChild(empty);
   }
 
@@ -322,7 +340,7 @@ function renderApp() {
         <div class="student-name">${s.name}</div>
         <div class="student-phone">${formatPhone(s.phone)}</div>
       </div>
-      <div class="check-mark"><i class="fas fa-check"></i></div>
+      <div class="check-mark"><i class="fa-solid fa-check"></i></div>
     `;
     card.addEventListener("click", () => toggleStudent(i, card));
     sg.appendChild(card);
@@ -332,28 +350,28 @@ function renderApp() {
       statusBox.innerHTML = `
         <div class="status-row">
           <button class="status-btn ${entry.status === 'absent' ? 'active' : ''}" data-s="absent" onclick="event.stopPropagation(); setStudentStatus(${i},'absent')">
-            <span class="btn-icon"><i class="fas fa-times"></i></span>Yok
+            <span class="btn-icon"><i class="fa-solid fa-xmark"></i></span>Yok
           </button>
           <button class="status-btn ${entry.status === 'late' ? 'active' : ''}" data-s="late" onclick="event.stopPropagation(); setStudentStatus(${i},'late')">
-            <span class="btn-icon"><i class="fas fa-clock"></i></span>Geç
+            <span class="btn-icon"><i class="fa-solid fa-clock"></i></span>Geç
           </button>
           <button class="status-btn ${entry.status === 'left_early' ? 'active' : ''}" data-s="left_early" onclick="event.stopPropagation(); setStudentStatus(${i},'left_early')">
-            <span class="btn-icon"><i class="fas fa-door-open"></i></span>Erken
+            <span class="btn-icon"><i class="fa-solid fa-door-open"></i></span>Erken
           </button>
           <button class="status-btn ${entry.status === 'late_left_early' ? 'active' : ''}" data-s="late_left_early" onclick="event.stopPropagation(); setStudentStatus(${i},'late_left_early')">
-            <span class="btn-icon"><i class="fas fa-arrows-alt-h"></i></span>İkisi
+            <span class="btn-icon"><i class="fa-solid fa-arrows-left-right"></i></span>İkisi
           </button>
         </div>
         <div class="extra-field ${(entry.status === 'late' || entry.status === 'late_left_early') ? 'visible' : ''}">
-          <label class="field-label"><i class="fas fa-hourglass-start"></i> Kaç dakika geç kaldı?</label>
-          <input type="number" placeholder="Örn. 20" min="1" max="120" inputmode="numeric" pattern="[0-9]*"
+          <label class="field-label"><i class="fa-solid fa-stopwatch"></i>Kaç dakika geç kaldı?</label>
+          <input type="number" placeholder="örn. 20" min="1" max="120" inputmode="numeric" pattern="[0-9]*"
             value="${entry.lateMin}"
             onclick="event.stopPropagation()"
             oninput="updateStudentField(${i},'lateMin',this.value)">
         </div>
         <div class="extra-field ${(entry.status === 'left_early' || entry.status === 'late_left_early') ? 'visible' : ''}">
-          <label class="field-label"><i class="fas fa-hourglass-end"></i> Ders bitmeden kaç dakika önce ayrıldı?</label>
-          <input type="number" placeholder="Örn. 15" min="1" max="120" inputmode="numeric" pattern="[0-9]*"
+          <label class="field-label"><i class="fa-solid fa-door-open"></i>Ders bitmeden kaç dakika önce ayrıldı?</label>
+          <input type="number" placeholder="örn. 15" min="1" max="120" inputmode="numeric" pattern="[0-9]*"
             value="${entry.earlyMin}"
             onclick="event.stopPropagation()"
             oninput="updateStudentField(${i},'earlyMin',this.value)">
@@ -365,28 +383,29 @@ function renderApp() {
   sPanel.appendChild(sg);
   root.appendChild(sPanel);
 
-  // NOTE PANEL
+  // ── Note panel ──
   const stPanel = make("div", "panel");
   stPanel.innerHTML = `
-    <div class="panel-title"><i class="fas fa-pencil-alt"></i> Ek Bilgi</div>
-    <label class="field-label"><i class="fas fa-sticky-note"></i> Ek not (opsiyonel)</label>
+    <div class="panel-title">Ek Bilgi</div>
+    <label class="field-label"><i class="fa-solid fa-note-sticky"></i>Ek not (opsiyonel)</label>
     <input type="text" id="extraNote" placeholder="Eklemek istediğiniz bir not..." autocomplete="off" oninput="updatePreview()" value="${prevNote.replace(/"/g, '&quot;')}">
   `;
   root.appendChild(stPanel);
 
-  // PREVIEW PANEL
+  // ── Preview panel ──
   const pPanel = make("div", "panel preview-panel");
   pPanel.style.gridColumn = "1 / -1";
   pPanel.innerHTML = `
-    <div class="panel-title"><i class="fas fa-eye"></i> Mesaj Önizleme & Gönder</div>
-    <span class="msg-label wa"><i class="fab fa-whatsapp"></i> WhatsApp — Her Veliye Ayrı</span>
+    <div class="panel-title">Mesaj Önizleme & Gönder</div>
+    <span class="msg-label wa"><i class="fa-brands fa-whatsapp"></i>WhatsApp — Her Veliye Ayrı</span>
     <div class="message-preview" id="whatsappPreview"><span class="placeholder-text">Öğrenci seçince mesaj burada görünür...</span></div>
     <div class="wa-buttons-section" id="waButtonsSection"></div>
     <div class="divider"></div>
-    <span class="msg-label tg"><i class="fab fa-telegram-plane"></i> Telegram Grup Mesajı</span>
+    <span class="msg-label tg"><i class="fa-brands fa-telegram"></i>Telegram Grup Mesajı</span>
     <div class="telegram-preview" id="telegramPreview"><span class="placeholder-text">Öğrenci seçince grup mesajı burada görünür...</span></div>
     <button class="tg-copy-btn" id="tgCopyBtn" onclick="copyTelegram()" disabled>
-      <i class="fas fa-copy"></i> Telegram Grubuna Kopyala
+      <i class="fa-brands fa-telegram"></i>
+      Telegram Grubuna Kopyala
     </button>
     <div class="region-tg-row" id="regionTgRow"></div>
   `;
@@ -397,25 +416,25 @@ function renderApp() {
     const link = (regions[regionName] || {}).telegram || "";
     const btn = document.createElement(link ? "a" : "button");
     btn.className = "region-tg-btn";
-    btn.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${regionName} Grubu`;
+    btn.innerHTML = `<i class="fa-solid fa-location-dot"></i> ${regionName} Grubu`;
     if (link) {
       btn.href = link;
       btn.target = "_blank";
       btn.rel = "noopener";
     } else {
       btn.dataset.missing = "true";
-      btn.onclick = () => alert(`${regionName} grup linki henüz ayarlanmadı.`);
+      btn.onclick = () => alert(`${regionName} grup linki henüz ayarlanmadı. Kaynaklar bölümünden "More" butonundan ekleyebilirsiniz.`);
     }
     regionRow.appendChild(btn);
   });
 
-  // LESSONS PANEL
+  // ── Lessons panel ──
   const sortedLessons = [...cls.lessons].sort((a, b) => a.number - b.number);
   const doneCount = sortedLessons.filter(l => l.is_complete).length;
   const lPanel = make("div", "panel lessons-panel");
   const lh = make("div", "panel-header");
   const lt = make("div", "panel-title");
-  lt.innerHTML = `<i class="fas fa-tasks"></i> Ders Takibi (${sortedLessons.length} Ders)`;
+  lt.textContent = `Ders Takibi (${sortedLessons.length} Ders)`;
   const lprog = make("div", "lessons-progress");
   lprog.textContent = `${doneCount} / ${sortedLessons.length} tamamlandı`;
   lh.appendChild(lt);
@@ -429,7 +448,7 @@ function renderApp() {
     const row = make("div", "lesson-row" + (lesson.is_complete ? " done" : ""));
     row.dataset.lessonId = lesson.id;
     row.innerHTML = `
-      <div class="lesson-checkbox"><i class="fas fa-check"></i></div>
+      <div class="lesson-checkbox"><i class="fa-solid fa-check"></i></div>
       <div class="lesson-body">
         <div class="lesson-num">Ders ${lesson.number}</div>
         <input type="text" class="lesson-note-input" placeholder="Not ekle..." value="${(lesson.notes || "").replace(/"/g, '&quot;')}" autocomplete="off">
@@ -462,7 +481,7 @@ function make(tag, cls) {
   return e;
 }
 
-// ── STUDENT SELECTION ──
+// ── STUDENT SELECTION (local only — daily attendance workflow) ──
 function toggleStudent(i, card) {
   if (selected.has(i)) {
     selected.delete(i);
@@ -486,7 +505,7 @@ function updateStudentField(i, field, value) {
   updatePreview();
 }
 
-// ── LESSON TRACKING ──
+// ── LESSON TRACKING (writes through to Supabase) ──
 async function toggleLesson(lessonId) {
   const cls = classes.find(c => c.id === activeClassId);
   if (!cls) return;
@@ -494,7 +513,7 @@ async function toggleLesson(lessonId) {
   if (!lesson) return;
 
   const newValue = !lesson.is_complete;
-  lesson.is_complete = newValue;
+  lesson.is_complete = newValue; // optimistic update
 
   const row = document.querySelector(`.lesson-row[data-lesson-id="${lessonId}"]`);
   if (row) row.classList.toggle("done", newValue);
@@ -506,9 +525,9 @@ async function toggleLesson(lessonId) {
     await toggleLessonInDb(lessonId, newValue);
   } catch (err) {
     console.error("Could not save lesson status:", err);
-    lesson.is_complete = !newValue;
+    lesson.is_complete = !newValue; // revert on failure
     if (row) row.classList.toggle("done", !newValue);
-    alert("Ders durumu kaydedilemedi. Lütfen bağlantınızı kontrol edin.");
+    alert("Ders durumu kaydedilemedi. İnternet bağlantınızı kontrol edin.");
   }
 }
 
@@ -563,6 +582,9 @@ function studentStatusNote(entry) {
 }
 
 function studentStatusIcon(entry) {
+  // NOTE: these icons are sent as plain text inside the Telegram group
+  // message itself (see buildTelegramMessage), so they remain emoji —
+  // a Font Awesome <i> tag cannot render inside plain copied/sent text.
   switch (entry.status) {
     case "absent": return "❌";
     case "late": return "⏰";
@@ -622,9 +644,9 @@ function updatePreview() {
     a.className = "wa-student-btn";
     a.href = waUrl;
     a.innerHTML = `
-      <i class="fab fa-whatsapp"></i>
+      <i class="fa-brands fa-whatsapp" style="font-size:17px;"></i>
       <span class="btn-name">${s.name}</span>
-      <span class="btn-arrow"><i class="fas fa-external-link-alt"></i></span>
+      <span class="btn-arrow"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
     `;
     row.appendChild(a);
 
@@ -632,7 +654,7 @@ function updatePreview() {
     callBtn.className = "call-student-btn";
     callBtn.href = telUrl;
     callBtn.title = `${s.name} velisini ara`;
-    callBtn.innerHTML = `<i class="fas fa-phone"></i>`;
+    callBtn.innerHTML = `<i class="fa-solid fa-phone" style="font-size:17px;"></i>`;
     row.appendChild(callBtn);
 
     waSection.appendChild(row);
@@ -655,7 +677,7 @@ function copyTelegram() {
     if (!btn) return;
     const orig = btn.innerHTML;
     btn.classList.add("copied");
-    btn.innerHTML = '<i class="fas fa-check"></i> Kopyalandı!';
+    btn.innerHTML = `<i class="fa-solid fa-check"></i> Kopyalandı!`;
     setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = orig; }, 2200);
   };
 
@@ -679,7 +701,7 @@ function legacyCopy(text, callback) {
   if (callback) callback();
 }
 
-// ── RESOURCES ──
+// ── RESOURCES (local-only: telegram links + images) ──
 function openResources() {
   document.getElementById("resourcesBackdrop").classList.add("open");
   document.body.style.overflow = "hidden";
@@ -699,10 +721,10 @@ function updateResourcesUI() {
   const regions = appData.regions;
   const atakumSub = document.getElementById("atakumSub");
   const atakumImg = document.getElementById("atakumImage");
-  if (!atakumSub || !atakumImg) return;
+  if (!atakumSub || !atakumImg) return; // resources sheet not in DOM yet
 
   const atakumLink = (regions.Atakum || {}).telegram || "";
-  atakumSub.textContent = atakumLink ? "Telegram grubu mevcut" : "Telegram grubu (ekle)";
+  atakumSub.innerHTML = atakumLink ? 'Telegram grubu <i class="fa-solid fa-check" style="color:var(--green);"></i>' : "Telegram grubu (ekle)";
   if (regions.Atakum && regions.Atakum.resourceImage) {
     atakumImg.src = regions.Atakum.resourceImage;
     atakumImg.style.display = "block";
@@ -713,7 +735,7 @@ function updateResourcesUI() {
   const ilkadimSub = document.getElementById("ilkadimSub");
   const ilkadimImg = document.getElementById("ilkadimImage");
   const ilkadimLink = (regions["İlkadım"] || {}).telegram || "";
-  ilkadimSub.textContent = ilkadimLink ? "Telegram grubu mevcut" : "Telegram grubu (ekle)";
+  ilkadimSub.innerHTML = ilkadimLink ? 'Telegram grubu <i class="fa-solid fa-check" style="color:var(--green);"></i>' : "Telegram grubu (ekle)";
   if (regions["İlkadım"] && regions["İlkadım"].resourceImage) {
     ilkadimImg.src = regions["İlkadım"].resourceImage;
     ilkadimImg.style.display = "block";
@@ -772,19 +794,24 @@ function updateRegionPickerUI() {
   const iBtn = document.getElementById("regionPickIlkadim");
   if (!aBtn || !iBtn) return;
   [aBtn, iBtn].forEach(b => {
-    b.classList.remove("active");
+    b.style.borderColor = "var(--border)";
+    b.style.background = "#fff";
+    b.style.color = "var(--slate)";
   });
   const active = modalSelectedRegion === "Atakum" ? aBtn : iBtn;
-  active.classList.add("active");
+  active.style.borderColor = "var(--gold)";
+  active.style.background = "var(--gold-soft)";
+  active.style.color = "#9C6F1E";
 }
 
 function openModal(classId) {
   editingClassId = classId || null;
+  modalStudentRows = [];
   const deleteBtn = document.getElementById("deleteClassBtn");
 
   if (classId) {
     const cls = classes.find(c => c.id === classId);
-    document.getElementById("modalTitle").innerHTML = `<i class="fas fa-edit"></i> Sınıfı Düzenle`;
+    document.getElementById("modalTitle").innerHTML = '<i class="fa-solid fa-pen"></i>Sınıfı Düzenle';
     document.getElementById("mClassName").value = cls.name;
     document.getElementById("mDay").value = cls.days || "";
     document.getElementById("mTimeStart").value = (cls.time_start || "").slice(0, 5);
@@ -792,9 +819,9 @@ function openModal(classId) {
     modalSelectedRegion = cls.branch || "Atakum";
     document.getElementById("studentBuilder").innerHTML = "";
     cls.students.forEach(s => addStudentRow(s.name, formatPhone(s.phone)));
-    deleteBtn.style.display = classes.length > 1 ? "flex" : "none";
+    deleteBtn.style.display = classes.length > 1 ? "block" : "none";
   } else {
-    document.getElementById("modalTitle").innerHTML = `<i class="fas fa-plus-circle"></i> Yeni Sınıf Ekle`;
+    document.getElementById("modalTitle").innerHTML = '<i class="fa-solid fa-plus"></i>Yeni Sınıf Ekle';
     document.getElementById("mClassName").value = "";
     document.getElementById("mDay").value = "";
     document.getElementById("mTimeStart").value = "";
@@ -825,7 +852,7 @@ function addStudentRow(name = "", phone = "") {
   row.innerHTML = `
     <input type="text" placeholder="Ad Soyad" value="${name}" data-role="name" autocomplete="off">
     <input type="text" placeholder="05xx..." value="${phone}" data-role="phone" inputmode="numeric" autocomplete="off">
-    <button class="remove-student-btn" onclick="removeStudentRow(this)"><i class="fas fa-times"></i></button>
+    <button class="remove-student-btn" onclick="removeStudentRow(this)"><i class="fa-solid fa-xmark"></i></button>
   `;
   builder.appendChild(row);
 }
@@ -863,8 +890,8 @@ async function saveClass() {
   });
 
   const saveBtn = document.querySelector(".modal-btn.primary");
-  const origText = saveBtn ? saveBtn.innerHTML : "";
-  if (saveBtn) { saveBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Kaydediliyor...'; saveBtn.disabled = true; }
+  const origText = saveBtn ? saveBtn.textContent : "";
+  if (saveBtn) { saveBtn.textContent = "Kaydediliyor..."; saveBtn.disabled = true; }
 
   try {
     if (editingClassId) {
@@ -880,7 +907,7 @@ async function saveClass() {
     console.error("Could not save class:", err);
     alert("Sınıf kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
   } finally {
-    if (saveBtn) { saveBtn.innerHTML = origText; saveBtn.disabled = false; }
+    if (saveBtn) { saveBtn.textContent = origText; saveBtn.disabled = false; }
   }
 }
 
