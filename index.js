@@ -209,7 +209,7 @@ function renderLoadingState() {
   if (!root) return;
   root.innerHTML = `
     <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 40px 20px;">
-      <div style="font-size:32px; margin-bottom:10px;">⏳</div>
+      <div style="font-size:32px; margin-bottom:10px;"><i class="fas fa-spinner fa-spin"></i></div>
       <div style="color:var(--slate); font-size:14px;">Veriler yükleniyor...</div>
     </div>
   `;
@@ -220,7 +220,7 @@ function renderErrorState() {
   if (!root) return;
   root.innerHTML = `
     <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 30px 20px;">
-      <div style="font-size:32px; margin-bottom:10px;">⚠️</div>
+      <div style="font-size:32px; margin-bottom:10px;"><i class="fas fa-exclamation-triangle" style="color:#E74C3C;"></i></div>
       <div style="color:#E74C3C; font-weight:600; font-size:14px; margin-bottom:6px;">Bağlantı hatası</div>
       <div style="color:var(--slate); font-size:13px; margin-bottom:16px;">${loadError}</div>
       <button class="modal-btn primary" style="display:inline-block; padding: 10px 20px;" onclick="fetchAllData()">Tekrar Dene</button>
@@ -298,12 +298,12 @@ function renderApp() {
   infoBar.style.gridColumn = "1 / -1";
   infoBar.innerHTML = `
     <div class="info-chips">
-      <div class="info-chip"><span>📚</span> ${cls.name} Sınıfı</div>
-      <div class="info-chip"><span>📍</span> ${cls.branch || "Atakum"}</div>
-      <div class="info-chip"><span>🗓️</span> ${cls.days || ""}</div>
-      <div class="info-chip"><span>🕜</span> ${formatTimeRange(cls.time_start, cls.time_end)}</div>
+      <div class="info-chip"><i class="fas fa-book"></i> ${cls.name} Sınıfı</div>
+      <div class="info-chip"><i class="fas fa-map-pin"></i> ${cls.branch || "Atakum"}</div>
+      <div class="info-chip"><i class="fas fa-calendar-day"></i> ${cls.days || ""}</div>
+      <div class="info-chip"><i class="fas fa-clock"></i> ${formatTimeRange(cls.time_start, cls.time_end)}</div>
     </div>
-    <button class="edit-class-btn" onclick="openModal('${cls.id}')">✏️ Düzenle</button>
+    <button class="edit-class-btn" onclick="openModal('${cls.id}')"><i class="fas fa-edit"></i> Düzenle</button>
   `;
   root.appendChild(infoBar);
 
@@ -340,7 +340,7 @@ function renderApp() {
         <div class="student-name">${s.name}</div>
         <div class="student-phone">${formatPhone(s.phone)}</div>
       </div>
-      <div class="check-mark">✓</div>
+      <div class="check-mark"><i class="fas fa-check"></i></div>
     `;
     card.addEventListener("click", () => toggleStudent(i, card));
     sg.appendChild(card);
@@ -350,27 +350,27 @@ function renderApp() {
       statusBox.innerHTML = `
         <div class="status-row">
           <button class="status-btn ${entry.status === 'absent' ? 'active' : ''}" data-s="absent" onclick="event.stopPropagation(); setStudentStatus(${i},'absent')">
-            <span class="btn-icon">❌</span>Yok
+            <span class="btn-icon"><i class="fas fa-times"></i></span>Yok
           </button>
           <button class="status-btn ${entry.status === 'late' ? 'active' : ''}" data-s="late" onclick="event.stopPropagation(); setStudentStatus(${i},'late')">
-            <span class="btn-icon">⏰</span>Geç
+            <span class="btn-icon"><i class="fas fa-clock"></i></span>Geç
           </button>
           <button class="status-btn ${entry.status === 'left_early' ? 'active' : ''}" data-s="left_early" onclick="event.stopPropagation(); setStudentStatus(${i},'left_early')">
-            <span class="btn-icon">🚪</span>Erken
+            <span class="btn-icon"><i class="fas fa-door-open"></i></span>Erken
           </button>
           <button class="status-btn ${entry.status === 'late_left_early' ? 'active' : ''}" data-s="late_left_early" onclick="event.stopPropagation(); setStudentStatus(${i},'late_left_early')">
-            <span class="btn-icon">↔️</span>İkisi
+            <span class="btn-icon"><i class="fas fa-arrows-alt-h"></i></span>İkisi
           </button>
         </div>
         <div class="extra-field ${(entry.status === 'late' || entry.status === 'late_left_early') ? 'visible' : ''}">
-          <label class="field-label">⏱ Kaç dakika geç kaldı?</label>
+          <label class="field-label"><i class="fas fa-hourglass-start"></i> Kaç dakika geç kaldı?</label>
           <input type="number" placeholder="örn. 20" min="1" max="120" inputmode="numeric" pattern="[0-9]*"
             value="${entry.lateMin}"
             onclick="event.stopPropagation()"
             oninput="updateStudentField(${i},'lateMin',this.value)">
         </div>
         <div class="extra-field ${(entry.status === 'left_early' || entry.status === 'late_left_early') ? 'visible' : ''}">
-          <label class="field-label">🚪 Ders bitmeden kaç dakika önce ayrıldı?</label>
+          <label class="field-label"><i class="fas fa-hourglass-end"></i> Ders bitmeden kaç dakika önce ayrıldı?</label>
           <input type="number" placeholder="örn. 15" min="1" max="120" inputmode="numeric" pattern="[0-9]*"
             value="${entry.earlyMin}"
             onclick="event.stopPropagation()"
@@ -387,7 +387,7 @@ function renderApp() {
   const stPanel = make("div", "panel");
   stPanel.innerHTML = `
     <div class="panel-title">Ek Bilgi</div>
-    <label class="field-label">📝 Ek not (opsiyonel)</label>
+    <label class="field-label"><i class="fas fa-pencil-alt"></i> Ek not (opsiyonel)</label>
     <input type="text" id="extraNote" placeholder="Eklemek istediğiniz bir not..." autocomplete="off" oninput="updatePreview()" value="${prevNote.replace(/"/g, '&quot;')}">
   `;
   root.appendChild(stPanel);
@@ -397,15 +397,14 @@ function renderApp() {
   pPanel.style.gridColumn = "1 / -1";
   pPanel.innerHTML = `
     <div class="panel-title">Mesaj Önizleme & Gönder</div>
-    <span class="msg-label wa">📱 WhatsApp — Her Veliye Ayrı</span>
+    <span class="msg-label wa"><i class="fab fa-whatsapp"></i> WhatsApp — Her Veliye Ayrı</span>
     <div class="message-preview" id="whatsappPreview"><span class="placeholder-text">Öğrenci seçince mesaj burada görünür...</span></div>
     <div class="wa-buttons-section" id="waButtonsSection"></div>
     <div class="divider"></div>
-    <span class="msg-label tg">📢 Telegram Grup Mesajı</span>
+    <span class="msg-label tg"><i class="fab fa-telegram-plane"></i> Telegram Grup Mesajı</span>
     <div class="telegram-preview" id="telegramPreview"><span class="placeholder-text">Öğrenci seçince grup mesajı burada görünür...</span></div>
     <button class="tg-copy-btn" id="tgCopyBtn" onclick="copyTelegram()" disabled>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-      Telegram Grubuna Kopyala
+      <i class="fas fa-copy"></i> Telegram Grubuna Kopyala
     </button>
     <div class="region-tg-row" id="regionTgRow"></div>
   `;
@@ -448,7 +447,7 @@ function renderApp() {
     const row = make("div", "lesson-row" + (lesson.is_complete ? " done" : ""));
     row.dataset.lessonId = lesson.id;
     row.innerHTML = `
-      <div class="lesson-checkbox">✓</div>
+      <div class="lesson-checkbox"><i class="fas fa-check"></i></div>
       <div class="lesson-body">
         <div class="lesson-num">Ders ${lesson.number}</div>
         <input type="text" class="lesson-note-input" placeholder="Not ekle..." value="${(lesson.notes || "").replace(/"/g, '&quot;')}" autocomplete="off">
@@ -641,9 +640,9 @@ function updatePreview() {
     a.className = "wa-student-btn";
     a.href = waUrl;
     a.innerHTML = `
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      <i class="fab fa-whatsapp"></i>
       <span class="btn-name">${s.name}</span>
-      <span class="btn-arrow">↗</span>
+      <span class="btn-arrow"><i class="fas fa-external-link-alt"></i></span>
     `;
     row.appendChild(a);
 
@@ -651,9 +650,7 @@ function updatePreview() {
     callBtn.className = "call-student-btn";
     callBtn.href = telUrl;
     callBtn.title = `${s.name} velisini ara`;
-    callBtn.innerHTML = `
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"/></svg>
-    `;
+    callBtn.innerHTML = `<i class="fas fa-phone"></i>`;
     row.appendChild(callBtn);
 
     waSection.appendChild(row);
@@ -851,7 +848,7 @@ function addStudentRow(name = "", phone = "") {
   row.innerHTML = `
     <input type="text" placeholder="Ad Soyad" value="${name}" data-role="name" autocomplete="off">
     <input type="text" placeholder="05xx..." value="${phone}" data-role="phone" inputmode="numeric" autocomplete="off">
-    <button class="remove-student-btn" onclick="removeStudentRow(this)">×</button>
+    <button class="remove-student-btn" onclick="removeStudentRow(this)"><i class="fas fa-times"></i></button>
   `;
   builder.appendChild(row);
 }
