@@ -597,12 +597,17 @@ function studentStatusIcon(entry) {
 function buildTelegramMessage(selectedList) {
   const cls = classes.find(c => c.id === activeClassId);
   const note = (document.getElementById("extraNote") || {}).value?.trim() || "";
-  let list = selectedList.map(({ s, entry }) => {
-    const icon = studentStatusIcon(entry);
-    const tag = studentStatusNote(entry);
-    return `- ${icon} ${s.name}${tag ? " (" + tag + ")" : ""}`;
-  }).join("\n");
-  let msg = `📚 ${cls.name} Sınıfı\n🗓️ ${cls.days || ""}\n🕜 ${formatTimeRange(cls.time_start, cls.time_end)}\n\n📌 Bilgilendirme\n\n${list}`;
+  let msg = `📚 ${cls.name} Sınıfı\n🗓️ ${cls.days || ""}\n🕜 ${formatTimeRange(cls.time_start, cls.time_end)}\n\n📌 Bilgilendirme\n\n`;
+  if (selectedList.length === 0) {
+    msg += `Tam katılım sağlanmıştır`;
+  } else {
+    let list = selectedList.map(({ s, entry }) => {
+      const icon = studentStatusIcon(entry);
+      const tag = studentStatusNote(entry);
+      return `- ${icon} ${s.name}${tag ? " (" + tag + ")" : ""}`;
+    }).join("\n");
+    msg += list;
+  }
   if (note) msg += `\n\n📝 ${note}`;
   msg += `\n\n✅ Veliler bilgilendirilmiştir. 👍`;
   return msg;
@@ -622,49 +627,44 @@ function updatePreview() {
   if (selectedList.length === 0) {
     wp.innerHTML = '<span class="placeholder-text">Öğrenci seçince mesaj burada görünür...</span>';
     wp.classList.remove("has-content");
-    tg.innerHTML = '<span class="placeholder-text">Öğrenci seçince grup mesajı burada görünür...</span>';
     waSection.innerHTML = "";
-    if (tgBtn) tgBtn.disabled = true;
-    return;
+    if (tgBtn) tgBtn.disabled = false;
+  } else {
+    wp.textContent = buildWAMessage(selectedList[0].s.name, selectedList[0].entry);
+    wp.classList.add("has-content");
+    waSection.innerHTML = "";
+    selectedList.forEach(({ s, entry }) => {
+      const msg = buildWAMessage(s.name, entry);
+      const waUrl = `https://wa.me/${s.phone}?text=${encodeURIComponent(msg)}`;
+      const telUrl = `tel:+${s.phone}`;
+      const row = document.createElement("div");
+      row.className = "contact-row";
+      const a = document.createElement("a");
+      a.className = "wa-student-btn";
+      a.href = waUrl;
+      a.innerHTML = `
+        <i class="fa-brands fa-whatsapp" style="font-size:17px;"></i>
+        <span class="btn-name">${s.name}</span>
+        <span class="btn-arrow"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+      `;
+      row.appendChild(a);
+      const callBtn = document.createElement("a");
+      callBtn.className = "call-student-btn";
+      callBtn.href = telUrl;
+      callBtn.title = `${s.name} velisini ara`;
+      callBtn.innerHTML = `<i class="fa-solid fa-phone" style="font-size:17px;"></i>`;
+      row.appendChild(callBtn);
+      waSection.appendChild(row);
+    });
   }
 
-  wp.textContent = buildWAMessage(selectedList[0].s.name, selectedList[0].entry);
-  wp.classList.add("has-content");
-
-  waSection.innerHTML = "";
-  selectedList.forEach(({ s, entry }) => {
-    const msg = buildWAMessage(s.name, entry);
-    const waUrl = `https://wa.me/${s.phone}?text=${encodeURIComponent(msg)}`;
-    const telUrl = `tel:+${s.phone}`;
-
-    const row = document.createElement("div");
-    row.className = "contact-row";
-
-    const a = document.createElement("a");
-    a.className = "wa-student-btn";
-    a.href = waUrl;
-    a.innerHTML = `
-      <i class="fa-brands fa-whatsapp" style="font-size:17px;"></i>
-      <span class="btn-name">${s.name}</span>
-      <span class="btn-arrow"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
-    `;
-    row.appendChild(a);
-
-    const callBtn = document.createElement("a");
-    callBtn.className = "call-student-btn";
-    callBtn.href = telUrl;
-    callBtn.title = `${s.name} velisini ara`;
-    callBtn.innerHTML = `<i class="fa-solid fa-phone" style="font-size:17px;"></i>`;
-    row.appendChild(callBtn);
-
-    waSection.appendChild(row);
-  });
-
+  // Always show Telegram preview (even if no students selected)
   tg.textContent = buildTelegramMessage(selectedList);
   if (tgBtn) tgBtn.disabled = false;
 }
 
 // ── TELEGRAM COPY ──
+
 function copyTelegram() {
   const cls = classes.find(c => c.id === activeClassId);
   if (!cls) return;
