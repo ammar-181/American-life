@@ -38,12 +38,11 @@
 <body>
 
 <header>
-                                        <div class="header-icon">
-                                          <img src="LOOOGO.png" alt="Header Icon">
-                                        </div>
-    <h1>Veli İletişim</h1>
-    <span>American Life</span>
+  <div class="header-icon">
+    <img src="LOOOGO.png" alt="Header Icon">
   </div>
+  <h1>Veli İletişim</h1>
+  <span>American Life</span>
   <button class="resources-btn" onclick="openResources()" title="Kaynaklar"><i class="fa-solid fa-folder-open"></i></button>
 </header>
 
@@ -69,7 +68,7 @@
       </div>
       <div style="color:var(--slate); font-size:14px;"><i class="fa-solid fa-arrow-up-right-from-square"></i></div>
     </a>
-    <a class="resource-link-card" href="https://drive.google.com/drive/folders/18mvxoQWoquQnWsX-73VwfWt-sHNNd_nM" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:13px; border:1.5px solid var(--border); border-radius:13px; padding:14px; text-decoration:none; color:var(--text); margin-bottom:16px;">
+    <a class="resource-link-card" href="https://drive.google.com/drive/folders/18mvxoQWoquQnWsX-73VwfWt-sHNNd_nM" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:13px; border:1.5px solid var(--border); border-radius:13px; padding:14px; text-decoration:none; color:var(--text); margin-bottom:10px;">
       <div class="resource-icon"><i class="fa-solid fa-book"></i></div>
       <div class="resource-info">
         <div class="resource-title">Kitapçıklar (Booklets)</div>
@@ -78,38 +77,26 @@
       <div style="color:var(--slate); font-size:14px;"><i class="fa-solid fa-arrow-up-right-from-square"></i></div>
     </a>
 
-    <!-- ATAKUM -->
-    <div class="resource-card">
-      <div class="resource-card-header">
-        <div class="resource-icon"><i class="fa-solid fa-location-dot"></i></div>
-        <div class="resource-info">
-          <div class="resource-title">Atakum</div>
-          <div class="resource-sub" id="atakumSub">Telegram grubu</div>
-        </div>
+    <a class="resource-link-card" href="https://joedtech.com/login?returnTo=%2Fteacher%2Fclass-detail%3Flayout%3Dteacher%26brandId%3D9bc24fc0-19d6-4cea-9804-6d6dc8c33e63%26branchId%3D97de961b-9d06-46bb-8e7a-6fb7aa7e9028%26class_id%3Da4a74727-6276-4fbd-936d-fb09e0d9289c%26tab%3Dinfo" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:13px; border:1.5px solid var(--border); border-radius:13px; padding:14px; text-decoration:none; color:var(--text); margin-bottom:10px;">
+      <div class="resource-icon"><i class="fa-solid fa-globe"></i></div>
+      <div class="resource-info">
+        <div class="resource-title">Art System</div>
+        <div class="resource-sub">Web sitesi</div>
       </div>
-      <div class="resource-actions">
-        <button class="resource-action-btn" onclick="openRegionLink('Atakum')"><i class="fa-brands fa-telegram"></i> Telegram</button>
-        <button class="resource-action-btn" onclick="triggerImageUpload('Atakum')"><i class="fa-solid fa-image"></i> More</button>
-      </div>
-      <img class="resource-image-preview" id="atakumImage" alt="Atakum kaynak görseli">
-      <input type="file" id="fileAtakum" accept="image/*" style="display:none" onchange="handleImageUpload('Atakum', this)">
-    </div>
+      <div style="color:var(--slate); font-size:14px;"><i class="fa-solid fa-arrow-up-right-from-square"></i></div>
+    </a>
 
-    <!-- İLKADIM -->
-    <div class="resource-card">
-      <div class="resource-card-header">
-        <div class="resource-icon"><i class="fa-solid fa-location-dot"></i></div>
-        <div class="resource-info">
-          <div class="resource-title">İlkadım</div>
-          <div class="resource-sub" id="ilkadimSub">Telegram grubu</div>
-        </div>
+    <div class="resource-link-card" style="display:flex; align-items:center; gap:13px; border:1.5px solid var(--border); border-radius:13px; padding:14px; text-decoration:none; color:var(--text); margin-bottom:16px; cursor:pointer;" onclick="document.getElementById('scheduleUpload').click()">
+      <div class="resource-icon"><i class="fa-solid fa-calendar"></i></div>
+      <div class="resource-info">
+        <div class="resource-title">My Schedule</div>
+        <div class="resource-sub" id="scheduleStatus">Programınızı yükleyin</div>
       </div>
-      <div class="resource-actions">
-        <button class="resource-action-btn" onclick="openRegionLink('İlkadım')"><i class="fa-brands fa-telegram"></i> Telegram</button>
-        <button class="resource-action-btn" onclick="triggerImageUpload('İlkadım')"><i class="fa-solid fa-image"></i> More</button>
-      </div>
-      <img class="resource-image-preview" id="ilkadimImage" alt="İlkadım kaynak görseli">
-      <input type="file" id="fileIlkadim" accept="image/*" style="display:none" onchange="handleImageUpload('İlkadım', this)">
+      <div style="color:var(--slate); font-size:14px;"><i class="fa-solid fa-upload"></i></div>
+    </div>
+    <input type="file" id="scheduleUpload" accept="image/*" style="display:none" onchange="handleScheduleUpload(this)">
+    <div id="schedulePreviewContainer" style="display:none; margin-bottom:16px;">
+      <img id="schedulePreview" style="width:100%; border-radius:10px; border:1.5px solid var(--border);">
     </div>
 
     <div class="modal-actions" style="margin-top: 4px;">

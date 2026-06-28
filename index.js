@@ -1,18 +1,14 @@
 // ============================================================
 // American Life — Veli İletişim — script.js
-// Data: classes / students / lessons → Supabase
-//       region telegram links + resource images → localStorage only
 // ============================================================
 
-// ── SUPABASE CLIENT ──
 const SUPABASE_URL = "https://glgdrymnefndxrzsejnp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZ2RyeW1uZWZuZHhyenNlam5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjYyMTEsImV4cCI6MjA5NzEwMjIxMX0.5T_3a29gtb37yfx1_pBuyb0roi9ZJKSWAdM_lR6Q4o0";
 
-// Loaded from CDN via <script> tag in index.html — see deployment notes
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ── LOCAL-ONLY DATA (regions: telegram links + resource images) ──
 const REGIONS_KEY = "americanLifeRegions_v1";
+const SCHEDULE_KEY = "americanLifeSchedule_v1";
 
 const defaultRegions = {
   Atakum: { telegram: "https://t.me/+BFwaPdYjN1EyZWI0", resourceImage: "" },
@@ -41,11 +37,6 @@ function saveRegions() {
   }
 }
 
-// ── APP STATE ──
-// classes: [{ id, name, branch, days, time_start, time_end,
-//             students: [{id, class_id, name, phone}],
-//             lessons: [{id, class_id, number, is_complete, notes}],
-//             note: "" (local-only, per-session, not persisted to DB) }]
 let classes = [];
 let activeClassId = null;
 let appData = { regions: loadRegions() };
@@ -53,12 +44,10 @@ let selected = new Map();
 let editingClassId = null;
 let activeRegionFilter = "all";
 let modalSelectedRegion = "Atakum";
-let modalStudentRows = [];
 let isLoading = true;
 let loadError = null;
 
 function makeDefaultLessonNumbers() {
-  // Used only when creating a brand new class — generates 30 lesson rows
   const nums = [];
   for (let i = 1; i <= 30; i++) nums.push(i);
   return nums;
@@ -82,15 +71,135 @@ function normalizePhone(raw) {
 }
 
 function formatTimeRange(start, end) {
-  // time_start / time_end come back as "13:30:00" — trim to "13:30"
   const trim = t => (t || "").slice(0, 5);
   if (!start && !end) return "";
   return `${trim(start)} – ${trim(end)}`;
 }
 
-// ============================================================
-// SUPABASE DATA LAYER
-// ============================================================
+function loadSchedule() {
+  try {
+    const data = localStorage.getItem(SCHEDULE_KEY);
+    if (data) {
+      const img = document.getElementById("schedulePreview");
+      const container = document.getElementById("schedulePreviewContainer");
+      const status = document.getElementById("scheduleStatus");
+      if (img && container) {
+        img.src = data;
+        container.style.display = "block";
+        if (status) status.textContent = "Program yüklendi ✓";
+      }
+    }
+  } catch (e) {
+    console.warn("Could not load schedule:", e);
+  }
+}
+
+function handleScheduleUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    try {
+      localStorage.setItem(SCHEDULE_KEY, dataUrl);
+    } catch (err) {
+      alert("Görsel çok büyük. Lütfen daha küçük bir dosya seçin.");
+      return;
+    }
+    const img = document.getElementById("schedulePreview");
+    const container = document.getElementById("schedulePreviewContainer");
+    const status = document.getElementById("scheduleStatus");
+    if (img && container) {
+      img.src = dataUrl;
+      container.style.display = "block";
+      if (status) status.textContent = "Program yüklendi ✓";
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = "";
+}
+
+function openResources() {
+  document.getElementById("resourcesBackdrop").classList.add("open");
+  document.body.style.overflow = "hidden";
+  updateResourcesUI();
+  loadSchedule();
+}
+
+function closeResources() {
+  document.getElementById("resourcesBackdrop").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function closeResourcesOnBackdrop(e) {
+  if (e.target.id === "resourcesBackdrop") closeResources();
+}
+
+function updateResourcesUI() {
+  const regions = appData.regions;
+  const atakumSub = document.getElementById("atakumSub");
+  const atakumImg = document.getElementById("atakumImage");
+  if (!atakumSub || !atakumImg) return;
+
+  const atakumLink = (regions.Atakum || {}).telegram || "";
+  atakumSub.innerHTML = atakumLink ? 'Telegram grubu <i class="fa-solid fa-check" style="color:var(--green);"></i>' : "Telegram grubu (ekle)";
+  if (regions.Atakum && regions.Atakum.resourceImage) {
+    atakumImg.src = regions.Atakum.resourceImage;
+    atakumImg.style.display = "block";
+  } else {
+    atakumImg.style.display = "none";
+  }
+
+  const ilkadimSub = document.getElementById("ilkadimSub");
+  const ilkadimImg = document.getElementById("ilkadimImage");
+  const ilkadimLink = (regions["İlkadım"] || {}).telegram || "";
+  ilkadimSub.innerHTML = ilkadimLink ? 'Telegram grubu <i class="fa-solid fa-check" style="color:var(--green);"></i>' : "Telegram grubu (ekle)";
+  if (regions["İlkadım"] && regions["İlkadım"].resourceImage) {
+    ilkadimImg.src = regions["İlkadım"].resourceImage;
+    ilkadimImg.style.display = "block";
+  } else {
+    ilkadimImg.style.display = "none";
+  }
+}
+
+function openRegionLink(region) {
+  const link = (appData.regions[region] || {}).telegram || "";
+  if (link) {
+    window.open(link, "_blank");
+  } else {
+    const newLink = prompt(`${region} için Telegram grup linkini girin:`, "https://t.me/...");
+    if (newLink && newLink.trim()) {
+      appData.regions[region].telegram = newLink.trim();
+      saveRegions();
+      updateResourcesUI();
+      renderApp();
+    }
+  }
+}
+
+function triggerImageUpload(region) {
+  const fileInput = document.getElementById(region === "Atakum" ? "fileAtakum" : "fileIlkadim");
+  if (fileInput) fileInput.click();
+}
+
+function handleImageUpload(region, input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    appData.regions[region].resourceImage = dataUrl;
+    saveRegions();
+    updateResourcesUI();
+    const img = document.getElementById(region === "Atakum" ? "atakumImage" : "ilkadimImage");
+    if (img) {
+      img.src = dataUrl;
+      img.style.display = "block";
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = "";
+}
 
 async function fetchAllData() {
   isLoading = true;
@@ -169,8 +278,6 @@ async function updateClassInDb(classId, name, branch, days, timeStart, timeEnd, 
     .eq("id", classId);
   if (classErr) throw classErr;
 
-  // Replace students wholesale: delete existing, insert new set.
-  // Simple and reliable for a small roster; avoids diffing logic.
   const { error: delErr } = await sb.from("students").delete().eq("class_id", classId);
   if (delErr) throw delErr;
 
@@ -182,8 +289,6 @@ async function updateClassInDb(classId, name, branch, days, timeStart, timeEnd, 
 }
 
 async function deleteClassInDb(classId) {
-  // students + lessons cascade-delete if you set up FK constraints with
-  // ON DELETE CASCADE; otherwise we clean up manually here first.
   await sb.from("students").delete().eq("class_id", classId);
   await sb.from("lessons").delete().eq("class_id", classId);
   const { error } = await sb.from("classes").delete().eq("id", classId);
@@ -200,17 +305,13 @@ async function updateLessonNoteInDb(lessonId, notes) {
   if (error) throw error;
 }
 
-// ============================================================
-// RENDER
-// ============================================================
-
 function renderLoadingState() {
   const root = document.getElementById("appRoot");
   if (!root) return;
   root.innerHTML = `
-    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 40px 20px;">
-      <div style="font-size:28px; margin-bottom:10px; color:var(--gold);"><i class="fa-solid fa-spinner fa-spin"></i></div>
-      <div style="color:var(--slate); font-size:14px;">Veriler yükleniyor...</div>
+    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 30px 16px;">
+      <div style="font-size:24px; margin-bottom:8px; color:var(--gold);"><i class="fa-solid fa-spinner fa-spin"></i></div>
+      <div style="color:var(--slate); font-size:13px;">Veriler yükleniyor...</div>
     </div>
   `;
 }
@@ -219,11 +320,11 @@ function renderErrorState() {
   const root = document.getElementById("appRoot");
   if (!root) return;
   root.innerHTML = `
-    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 30px 20px;">
-      <div style="font-size:28px; margin-bottom:10px; color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
-      <div style="color:#E74C3C; font-weight:600; font-size:14px; margin-bottom:6px;">Bağlantı hatası</div>
-      <div style="color:var(--slate); font-size:13px; margin-bottom:16px;">${loadError}</div>
-      <button class="modal-btn primary" style="display:inline-block; padding: 10px 20px;" onclick="fetchAllData()">Tekrar Dene</button>
+    <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 24px 16px;">
+      <div style="font-size:24px; margin-bottom:8px; color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div style="color:#E74C3C; font-weight:600; font-size:13px; margin-bottom:4px;">Bağlantı hatası</div>
+      <div style="color:var(--slate); font-size:12px; margin-bottom:12px;">${loadError}</div>
+      <button class="modal-btn primary" style="display:inline-block; padding:8px 16px; font-size:13px;" onclick="fetchAllData()">Tekrar Dene</button>
     </div>
   `;
 }
@@ -280,7 +381,7 @@ function renderApp() {
   const cls = classes.find(c => c.id === activeClassId);
   if (!cls) {
     root.innerHTML = `
-      <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 30px 20px; color:var(--slate);">
+      <div class="panel" style="grid-column: 1 / -1; text-align:center; padding: 24px 16px; color:var(--slate); font-size:13px;">
         Henüz sınıf eklenmedi. Üstteki "+" butonuna dokunarak ilk sınıfınızı oluşturun.
       </div>
     `;
@@ -293,12 +394,11 @@ function renderApp() {
   root.innerHTML = "";
   const regions = appData.regions;
 
-  // ── Class info bar ──
   const infoBar = make("div", "class-info-bar");
   infoBar.style.gridColumn = "1 / -1";
   infoBar.innerHTML = `
     <div class="info-chips">
-      <div class="info-chip"><i class="fa-solid fa-book-open"></i> ${cls.name} Sınıfı</div>
+      <div class="info-chip"><i class="fa-solid fa-book-open"></i> ${cls.name}</div>
       <div class="info-chip"><i class="fa-solid fa-location-dot"></i> ${cls.branch || "Atakum"}</div>
       <div class="info-chip"><i class="fa-solid fa-calendar-days"></i> ${cls.days || ""}</div>
       <div class="info-chip"><i class="fa-solid fa-clock"></i> ${formatTimeRange(cls.time_start, cls.time_end)}</div>
@@ -307,7 +407,6 @@ function renderApp() {
   `;
   root.appendChild(infoBar);
 
-  // ── Students panel ──
   const sPanel = make("div", "panel");
   const ph = make("div", "panel-header");
   const pt = make("div", "panel-title");
@@ -325,7 +424,7 @@ function renderApp() {
 
   if (!cls.students.length) {
     const empty = make("div", "");
-    empty.style.cssText = "text-align:center; color:var(--slate); font-size:13px; padding:14px;";
+    empty.style.cssText = "text-align:center; color:var(--slate); font-size:12px; padding:10px;";
     empty.textContent = "Bu sınıfta öğrenci yok. Düzenle ile ekleyebilirsiniz.";
     sg.appendChild(empty);
   }
@@ -376,6 +475,11 @@ function renderApp() {
             onclick="event.stopPropagation()"
             oninput="updateStudentField(${i},'earlyMin',this.value)">
         </div>
+        <div class="exam-btn-wrapper">
+          <button class="whatsapp-btn" onclick="event.stopPropagation(); sendDirectWhatsApp(${i})">
+            <i class="fa-brands fa-whatsapp"></i> WhatsApp
+          </button>
+        </div>
       `;
       sg.appendChild(statusBox);
     }
@@ -383,7 +487,6 @@ function renderApp() {
   sPanel.appendChild(sg);
   root.appendChild(sPanel);
 
-  // ── Note panel ──
   const stPanel = make("div", "panel");
   stPanel.innerHTML = `
     <div class="panel-title">Ek Bilgi</div>
@@ -392,7 +495,6 @@ function renderApp() {
   `;
   root.appendChild(stPanel);
 
-  // ── Preview panel ──
   const pPanel = make("div", "panel preview-panel");
   pPanel.style.gridColumn = "1 / -1";
   pPanel.innerHTML = `
@@ -428,7 +530,6 @@ function renderApp() {
     regionRow.appendChild(btn);
   });
 
-  // ── Lessons panel ──
   const sortedLessons = [...cls.lessons].sort((a, b) => a.number - b.number);
   const doneCount = sortedLessons.filter(l => l.is_complete).length;
   const lPanel = make("div", "panel lessons-panel");
@@ -481,7 +582,6 @@ function make(tag, cls) {
   return e;
 }
 
-// ── STUDENT SELECTION (local only — daily attendance workflow) ──
 function toggleStudent(i, card) {
   if (selected.has(i)) {
     selected.delete(i);
@@ -505,7 +605,6 @@ function updateStudentField(i, field, value) {
   updatePreview();
 }
 
-// ── LESSON TRACKING (writes through to Supabase) ──
 async function toggleLesson(lessonId) {
   const cls = classes.find(c => c.id === activeClassId);
   if (!cls) return;
@@ -513,7 +612,7 @@ async function toggleLesson(lessonId) {
   if (!lesson) return;
 
   const newValue = !lesson.is_complete;
-  lesson.is_complete = newValue; // optimistic update
+  lesson.is_complete = newValue;
 
   const row = document.querySelector(`.lesson-row[data-lesson-id="${lessonId}"]`);
   if (row) row.classList.toggle("done", newValue);
@@ -525,7 +624,7 @@ async function toggleLesson(lessonId) {
     await toggleLessonInDb(lessonId, newValue);
   } catch (err) {
     console.error("Could not save lesson status:", err);
-    lesson.is_complete = !newValue; // revert on failure
+    lesson.is_complete = !newValue;
     if (row) row.classList.toggle("done", !newValue);
     alert("Ders durumu kaydedilemedi. İnternet bağlantınızı kontrol edin.");
   }
@@ -539,7 +638,16 @@ async function updateLessonNote(lessonId, value) {
   }
 }
 
-// ── MESSAGE BUILDERS ──
+// ── DIRECT WHATSAPP (opens with empty message) ──
+function sendDirectWhatsApp(index) {
+  const cls = classes.find(c => c.id === activeClassId);
+  if (!cls) return;
+  const student = cls.students[index];
+  if (!student) return;
+  const waUrl = `https://wa.me/${student.phone}`;
+  window.open(waUrl, "_blank");
+}
+
 function buildWAMessage(studentName, entry) {
   const note = (document.getElementById("extraNote") || {}).value?.trim() || "";
   const late = (entry.lateMin || "").toString().trim();
@@ -582,9 +690,6 @@ function studentStatusNote(entry) {
 }
 
 function studentStatusIcon(entry) {
-  // NOTE: these icons are sent as plain text inside the Telegram group
-  // message itself (see buildTelegramMessage), so they remain emoji —
-  // a Font Awesome <i> tag cannot render inside plain copied/sent text.
   switch (entry.status) {
     case "absent": return "❌";
     case "late": return "⏰";
@@ -597,9 +702,17 @@ function studentStatusIcon(entry) {
 function buildTelegramMessage(selectedList) {
   const cls = classes.find(c => c.id === activeClassId);
   const note = (document.getElementById("extraNote") || {}).value?.trim() || "";
-  let msg = `📚 ${cls.name} Sınıfı\n🗓️ ${cls.days || ""}\n🕜 ${formatTimeRange(cls.time_start, cls.time_end)}\n\n📌 Bilgilendirme\n\n`;
-  if (selectedList.length === 0) {
-    msg += `Tam katılım sağlanmıştır`;
+  
+  const start = cls.time_start ? cls.time_start.slice(0, 5) : "";
+  const end = cls.time_end ? cls.time_end.slice(0, 5) : "";
+  const timeStr = start && end ? `${start} – ${end}` : "";
+  
+  let msg = `📚 ${cls.name} Sınıfı\n🗓️ ${cls.days || ""}\n🕜 ${timeStr}\n\n📌 Bilgilendirme\n\n`;
+  
+  const hasStatus = selectedList.some(({ entry }) => entry && entry.status);
+  
+  if (selectedList.length === 0 || !hasStatus) {
+    msg += `✅  Tam katılım sağlanmıştır`;
   } else {
     let list = selectedList.map(({ s, entry }) => {
       const icon = studentStatusIcon(entry);
@@ -607,13 +720,14 @@ function buildTelegramMessage(selectedList) {
       return `- ${icon} ${s.name}${tag ? " (" + tag + ")" : ""}`;
     }).join("\n");
     msg += list;
+    msg += `\n\n✅ Veliler bilgilendirilmiştir. 👍`;
   }
+  
   if (note) msg += `\n\n📝 ${note}`;
-  msg += `\n\n✅ Veliler bilgilendirilmiştir. 👍`;
+  
   return msg;
 }
 
-// ── PREVIEW ──
 function updatePreview() {
   const cls = classes.find(c => c.id === activeClassId);
   if (!cls) return;
@@ -643,7 +757,7 @@ function updatePreview() {
       a.className = "wa-student-btn";
       a.href = waUrl;
       a.innerHTML = `
-        <i class="fa-brands fa-whatsapp" style="font-size:17px;"></i>
+        <i class="fa-brands fa-whatsapp" style="font-size:15px;"></i>
         <span class="btn-name">${s.name}</span>
         <span class="btn-arrow"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
       `;
@@ -652,24 +766,20 @@ function updatePreview() {
       callBtn.className = "call-student-btn";
       callBtn.href = telUrl;
       callBtn.title = `${s.name} velisini ara`;
-      callBtn.innerHTML = `<i class="fa-solid fa-phone" style="font-size:17px;"></i>`;
+      callBtn.innerHTML = `<i class="fa-solid fa-phone" style="font-size:15px;"></i>`;
       row.appendChild(callBtn);
       waSection.appendChild(row);
     });
   }
 
-  // Always show Telegram preview (even if no students selected)
   tg.textContent = buildTelegramMessage(selectedList);
   if (tgBtn) tgBtn.disabled = false;
 }
-
-// ── TELEGRAM COPY ──
 
 function copyTelegram() {
   const cls = classes.find(c => c.id === activeClassId);
   if (!cls) return;
   const selectedList = [...selected.entries()].map(([i, entry]) => ({ s: cls.students[i], entry }));
-  if (!selectedList.length) return;
   const text = buildTelegramMessage(selectedList);
 
   const done = () => {
@@ -701,89 +811,6 @@ function legacyCopy(text, callback) {
   if (callback) callback();
 }
 
-// ── RESOURCES (local-only: telegram links + images) ──
-function openResources() {
-  document.getElementById("resourcesBackdrop").classList.add("open");
-  document.body.style.overflow = "hidden";
-  updateResourcesUI();
-}
-
-function closeResources() {
-  document.getElementById("resourcesBackdrop").classList.remove("open");
-  document.body.style.overflow = "";
-}
-
-function closeResourcesOnBackdrop(e) {
-  if (e.target.id === "resourcesBackdrop") closeResources();
-}
-
-function updateResourcesUI() {
-  const regions = appData.regions;
-  const atakumSub = document.getElementById("atakumSub");
-  const atakumImg = document.getElementById("atakumImage");
-  if (!atakumSub || !atakumImg) return; // resources sheet not in DOM yet
-
-  const atakumLink = (regions.Atakum || {}).telegram || "";
-  atakumSub.innerHTML = atakumLink ? 'Telegram grubu <i class="fa-solid fa-check" style="color:var(--green);"></i>' : "Telegram grubu (ekle)";
-  if (regions.Atakum && regions.Atakum.resourceImage) {
-    atakumImg.src = regions.Atakum.resourceImage;
-    atakumImg.style.display = "block";
-  } else {
-    atakumImg.style.display = "none";
-  }
-
-  const ilkadimSub = document.getElementById("ilkadimSub");
-  const ilkadimImg = document.getElementById("ilkadimImage");
-  const ilkadimLink = (regions["İlkadım"] || {}).telegram || "";
-  ilkadimSub.innerHTML = ilkadimLink ? 'Telegram grubu <i class="fa-solid fa-check" style="color:var(--green);"></i>' : "Telegram grubu (ekle)";
-  if (regions["İlkadım"] && regions["İlkadım"].resourceImage) {
-    ilkadimImg.src = regions["İlkadım"].resourceImage;
-    ilkadimImg.style.display = "block";
-  } else {
-    ilkadimImg.style.display = "none";
-  }
-}
-
-function openRegionLink(region) {
-  const link = (appData.regions[region] || {}).telegram || "";
-  if (link) {
-    window.open(link, "_blank");
-  } else {
-    const newLink = prompt(`${region} için Telegram grup linkini girin:`, "https://t.me/...");
-    if (newLink && newLink.trim()) {
-      appData.regions[region].telegram = newLink.trim();
-      saveRegions();
-      updateResourcesUI();
-      renderApp();
-    }
-  }
-}
-
-function triggerImageUpload(region) {
-  const fileInput = document.getElementById(region === "Atakum" ? "fileAtakum" : "fileIlkadim");
-  if (fileInput) fileInput.click();
-}
-
-function handleImageUpload(region, input) {
-  if (!input.files || !input.files[0]) return;
-  const file = input.files[0];
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const dataUrl = e.target.result;
-    appData.regions[region].resourceImage = dataUrl;
-    saveRegions();
-    updateResourcesUI();
-    const img = document.getElementById(region === "Atakum" ? "atakumImage" : "ilkadimImage");
-    if (img) {
-      img.src = dataUrl;
-      img.style.display = "block";
-    }
-  };
-  reader.readAsDataURL(file);
-  input.value = "";
-}
-
-// ── CLASS MODAL ──
 function pickRegion(region) {
   modalSelectedRegion = region;
   updateRegionPickerUI();
@@ -806,7 +833,6 @@ function updateRegionPickerUI() {
 
 function openModal(classId) {
   editingClassId = classId || null;
-  modalStudentRows = [];
   const deleteBtn = document.getElementById("deleteClassBtn");
 
   if (classId) {
@@ -925,5 +951,4 @@ async function deleteClass() {
   }
 }
 
-// ── INIT ──
 fetchAllData();
